@@ -1,0 +1,23 @@
+{
+  "$schema": "https://developers.reddit.com/schema/config-file.v1.json",
+  "name": "glp1-monitor",
+  "permissions": {
+    "http": {
+      "enable": true,
+      "domains": ["thelowerdb.com"]
+    },
+    "reddit": true
+  },
+  "server": {
+    "dir": "dist/server",
+    "entry": "index.js"
+  },
+  "scheduler": {
+    "tasks": {
+      "glp1_weekly_ingest": {
+        "endpoint": "/internal/cron/glp1-weekly-ingest",
+        "cron": "0 9 * * 1"
+      }
+    }
+  }
+}

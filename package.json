@@ -1,0 +1,27 @@
+{
+  "private": true,
+  "name": "glp1-monitor",
+  "version": "0.0.0",
+  "license": "BSD-3-Clause",
+  "type": "module",
+  "scripts": {
+    "build": "node --experimental-strip-types ./tools/build.ts --minify",
+    "deploy": "npm run build && devvit upload",
+    "dev": "devvit playtest",
+    "login": "devvit login",
+    "launch": "npm run build && npm run deploy && devvit publish",
+    "type-check": "tsc --build"
+  },
+  "engines": {
+    "node": ">=22.6.0"
+  },
+  "dependencies": {
+    "@devvit/web": "0.12.19",
+    "devvit": "0.12.19"
+  },
+  "devDependencies": {
+    "@types/node": "^25.6.0",
+    "esbuild": "0.27.2",
+    "typescript": "5.9.3"
+  }
+}
