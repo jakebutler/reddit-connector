@@ -12,6 +12,16 @@
     "dir": "dist/server",
     "entry": "index.js"
   },
+  "settings": {
+    "global": {
+      "ingestSecret": {
+        "type": "string",
+        "label": "Ingest Secret",
+        "helpText": "Shared secret for POST /api/digest/reddit-ingest. Must match DIGEST_REDDIT_INGEST_SECRET in the Lower DB deployment.",
+        "isSecret": true
+      }
+    }
+  },
   "scheduler": {
     "tasks": {
       "glp1_weekly_ingest": {

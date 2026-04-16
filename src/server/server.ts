@@ -1,9 +1,9 @@
 import { createServer } from "@devvit/web/server";
-// @ts-ignore — reddit is present at runtime but missing from .d.ts in 0.12.19
-import { reddit as _reddit } from "@devvit/web/server";
+// @ts-ignore — reddit and settings are present at runtime but missing from .d.ts in 0.12.19
+import { reddit as _reddit, settings as _settings } from "@devvit/web/server";
 import type { IncomingMessage, ServerResponse } from "node:http";
 
-// ─── Type shim for reddit client ─────────────────────────────────────────────
+// ─── Type shims ───────────────────────────────────────────────────────────────
 interface RedditPost {
   permalink: string;
   title: string;
@@ -18,20 +18,16 @@ interface RedditClient {
     limit: number;
   }): Promise<RedditPost[]>;
 }
+interface SettingsClient {
+  get<T = string | undefined>(name: string): Promise<T | undefined>;
+}
 const reddit = _reddit as unknown as RedditClient;
+const settings = _settings as unknown as SettingsClient;
 
 // ─── Configuration ────────────────────────────────────────────────────────────
 const INGEST_URL = "https://thelowerdb.com/api/digest/reddit-ingest";
-const INGEST_SECRET = process.env.INGEST_SECRET ?? "";
 const SUBREDDITS = ["Mounjaro", "Ozempic", "Zepbound", "GLP1_Drugs", "loseit"];
 const POSTS_PER_SUB = 25;
-const JOB_NAME = "glp1_weekly_ingest";
-
-if (!INGEST_SECRET) {
-  console.error(
-    "[glp1] INGEST_SECRET is not set. Run: devvit env set INGEST_SECRET <value>",
-  );
-}
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface PostPayload {
@@ -44,7 +40,10 @@ interface PostPayload {
 }
 
 // ─── Core ingest logic ────────────────────────────────────────────────────────
-async function ingestSubreddit(subreddit: string): Promise<void> {
+async function ingestSubreddit(
+  subreddit: string,
+  secret: string,
+): Promise<void> {
   console.log(`[glp1] Fetching r/${subreddit}...`);
 
   let posts: PostPayload[] = [];
@@ -80,7 +79,7 @@ async function ingestSubreddit(subreddit: string): Promise<void> {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "X-Digest-Reddit-Ingest-Secret": INGEST_SECRET,
+        "X-Digest-Reddit-Ingest-Secret": secret,
       },
       body: JSON.stringify({ subreddit, posts }),
     });
@@ -100,21 +99,19 @@ async function ingestSubreddit(subreddit: string): Promise<void> {
 
 // ─── Job handler ──────────────────────────────────────────────────────────────
 async function weeklyIngestHandler(): Promise<void> {
+  const secret = await settings.get<string>("ingestSecret");
+  if (!secret) {
+    console.error(
+      "[glp1] ingestSecret is not set. Run: devvit settings set ingestSecret",
+    );
+    return;
+  }
+
   console.log("[glp1] Weekly ingest job running.");
   for (const sub of SUBREDDITS) {
-    await ingestSubreddit(sub);
+    await ingestSubreddit(sub, secret);
   }
   console.log("[glp1] Weekly ingest job complete.");
-}
-
-// ─── Helper: read full body from IncomingMessage ──────────────────────────────
-function readBody(req: IncomingMessage): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const chunks: Buffer[] = [];
-    req.on("data", (chunk: Buffer) => chunks.push(chunk));
-    req.on("end", () => resolve(Buffer.concat(chunks).toString("utf8")));
-    req.on("error", reject);
-  });
 }
 
 // ─── Server ───────────────────────────────────────────────────────────────────

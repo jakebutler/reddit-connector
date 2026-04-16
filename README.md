@@ -52,8 +52,10 @@ npm run login
 The secret must match the `DIGEST_REDDIT_INGEST_SECRET` environment variable set in the Lower DB deployment.
 
 ```bash
-npx devvit env set INGEST_SECRET <your-secret>
+devvit settings set ingestSecret
 ```
+
+The CLI will prompt you to enter the value interactively (it won't echo it to the terminal).
 
 ### 4. Deploy
 
@@ -87,7 +89,7 @@ devvit.json            — Devvit app config: server entry, permissions, cron sc
 |---|---|---|
 | Monitored subreddits | `SUBREDDITS` in `server.ts` | Requires redeploy after changes |
 | Ingest URL | `INGEST_URL` in `server.ts` | Points to Lower DB `/api/digest/reddit-ingest` |
-| Ingest secret | Devvit env var `INGEST_SECRET` | Set with `devvit env set`; never commit this value |
+| Ingest secret | Devvit app setting `ingestSecret` | Set with `devvit settings set ingestSecret`; stored encrypted by Devvit, never in source |
 | Cron schedule | `devvit.json` → `scheduler.tasks` | Currently `0 9 * * 1` (Monday 9 AM UTC) |
 | HTTP allowlist | `devvit.json` → `permissions.http.domains` | Must include the Lower DB domain |
 
