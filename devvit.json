@@ -4,7 +4,9 @@
   "permissions": {
     "http": {
       "enable": true,
-      "domains": ["thelowerdb.com"]
+      "domains": [
+        "thelowerdb.com"
+      ]
     },
     "reddit": true
   },
@@ -29,5 +31,8 @@
         "cron": "0 9 * * 1"
       }
     }
+  },
+  "dev": {
+    "subreddit": "glp1_monitor_dev"
   }
 }

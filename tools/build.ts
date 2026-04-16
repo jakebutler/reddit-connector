@@ -11,7 +11,10 @@ await esbuild.build({
   format: "esm",
   target: "node22",
   minify,
-  packages: "external", // don't bundle node_modules — Devvit provides them at runtime
+  // Bundle all npm packages into the output — Devvit's runtime is a plain Node.js
+  // environment and does not have @devvit/web or other deps available on disk.
+  // Only true Node.js built-ins (node:http, node:crypto, etc.) stay external.
+  external: ["node:*"],
   logLevel: "info",
 });
 
