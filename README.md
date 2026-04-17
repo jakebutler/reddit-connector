@@ -1,8 +1,8 @@
 # Reddit Connector
 
-A [Devvit](https://developers.reddit.com/) server app that ingests hot posts from GLP-1 patient communities on Reddit and pushes them to [The Lower DB](https://thelowerdb.com) weekly digest pipeline.
+A native Devvit app that ingests hot posts from GLP-1 patient communities on Reddit and pushes them to [The Lower DB](https://thelowerdb.com) digest pipeline.
 
-Runs as a scheduled cron job every Monday at 9 AM UTC. For each monitored subreddit, it fetches the top 25 hot posts via the Reddit API and POSTs them to the Lower DB ingest endpoint, where they're cached in Convex and used to generate the weekly digest instead of the fragile public Reddit JSON API.
+The app runs a daily scheduled job at 9 AM UTC. It also exposes a moderator-only subreddit menu action, `Run GLP-1 ingest`, for testing or an initial fetch. Both paths run the same ingest logic.
 
 ## Monitored subreddits
 
@@ -12,26 +12,28 @@ Runs as a scheduled cron job every Monday at 9 AM UTC. For each monitored subred
 - r/GLP1_Drugs
 - r/loseit
 
-To change this list, update the `SUBREDDITS` array in `src/server/server.ts` and redeploy (`npm run deploy`). The list is baked into the bundle at deploy time — there's no hot-reload.
+To change this list, update the `SUBREDDITS` array in [`src/main.ts`](./src/main.ts) and redeploy.
 
 ## How it works
 
-```
-Devvit cron (Monday 9 AM UTC)
-  → POST /internal/cron/glp1-weekly-ingest  (Devvit routes this internally)
-    → fetch top 25 hot posts per subreddit via Reddit API
-      → POST https://thelowerdb.com/api/digest/reddit-ingest  (once per subreddit)
-        → Convex stores posts in digestRedditIngestCache
-          → Lower DB weekly digest reads from cache instead of public reddit.com JSON
+```text
+AppInstall / AppUpgrade
+  -> idempotently refreshes native Devvit cron: 0 9 * * *
+
+Daily cron or moderator menu action
+  -> fetch top 25 hot posts per subreddit via Reddit API
+    -> fallback to subreddit JSON if Reddit API post construction fails on malformed items
+    -> POST https://thelowerdb.com/api/digest/reddit-ingest
+      -> Lower DB stores posts for downstream digest generation
 ```
 
-Authentication uses a shared secret (`INGEST_SECRET` / `DIGEST_REDDIT_INGEST_SECRET`) sent as the `X-Digest-Reddit-Ingest-Secret` request header.
+Authentication uses the shared secret stored in Devvit app settings as `ingestSecret`. That secret is forwarded to Lower DB as the `X-Digest-Reddit-Ingest-Secret` header.
 
 ## Prerequisites
 
-- Node.js ≥ 22.6.0
+- Node.js >= 22.6.0
 - A Reddit account connected to the [Devvit developer platform](https://developers.reddit.com/)
-- The `devvit` CLI (installed as a project dependency — no global install needed)
+- The `devvit` CLI
 
 ## Setup
 
@@ -49,13 +51,11 @@ npm run login
 
 ### 3. Set the ingest secret
 
-The secret must match the `DIGEST_REDDIT_INGEST_SECRET` environment variable set in the Lower DB deployment.
+The secret must match the `DIGEST_REDDIT_INGEST_SECRET` environment variable in the Lower DB deployment.
 
 ```bash
 devvit settings set ingestSecret
 ```
-
-The CLI will prompt you to enter the value interactively (it won't echo it to the terminal).
 
 ### 4. Deploy
 
@@ -63,35 +63,57 @@ The CLI will prompt you to enter the value interactively (it won't echo it to th
 npm run deploy
 ```
 
-This builds the server bundle and uploads it to Devvit. The cron job is registered automatically from `devvit.json` — no manual scheduling step is needed.
+This runs a type-check and uploads the app to Devvit.
+
+## Fetch Domains
+
+The following domains are requested for this app:
+
+- `thelowerdb.com` - server-side POST target for the ingest pipeline
+- `reddit.com` and `www.reddit.com` - fallback read path for subreddit JSON when Devvit post construction fails on malformed Reddit objects
+
+## Manual testing
+
+Open the playtest subreddit URL and use the subreddit header `...` menu:
+
+- `Run GLP-1 ingest`
+
+The menu action queues a one-off native Devvit scheduler job, so it exercises the same runtime as the daily scheduled job.
+
+## Logs
+
+Monitor logs with:
+
+```bash
+devvit logs glp1_monitor_dev glp1-monitor --show-timestamps
+```
 
 ## Scripts
 
 | Command | Description |
 |---|---|
-| `npm run build` | Compile `src/server/` → `dist/server/index.js` via esbuild |
-| `npm run deploy` | Build then upload to Devvit (`devvit upload`) |
-| `npm run dev` | Live playtest in a subreddit (`devvit playtest`) |
-| `npm run type-check` | TypeScript type check |
+| `npm run build` | Type-check the app |
+| `npm run deploy` | Type-check then upload to Devvit |
+| `npm run dev` | Start Devvit playtest |
+| `npm run type-check` | Run TypeScript type-check |
 
 ## Project structure
 
-```
-src/server/server.ts   — server logic: cron handler, Reddit fetch, ingest POST
-src/server/index.ts    — re-exports server as default
-tools/build.ts         — esbuild script
-devvit.json            — Devvit app config: server entry, permissions, cron schedule
+```text
+src/main.ts     - native Devvit entrypoint: triggers, scheduler jobs, menu item, ingest logic
+devvit.json     - app config: blocks entry, permissions, settings, playtest subreddit
 ```
 
 ## Configuration reference
 
 | Value | Where it lives | Notes |
 |---|---|---|
-| Monitored subreddits | `SUBREDDITS` in `server.ts` | Requires redeploy after changes |
-| Ingest URL | `INGEST_URL` in `server.ts` | Points to Lower DB `/api/digest/reddit-ingest` |
-| Ingest secret | Devvit app setting `ingestSecret` | Set with `devvit settings set ingestSecret`; stored encrypted by Devvit, never in source |
-| Cron schedule | `devvit.json` → `scheduler.tasks` | Currently `0 9 * * 1` (Monday 9 AM UTC) |
-| HTTP allowlist | `devvit.json` → `permissions.http.domains` | Must include the Lower DB domain |
+| Monitored subreddits | `SUBREDDITS` in `src/main.ts` | Requires redeploy after changes |
+| Ingest URL | `INGEST_URL` in `src/main.ts` | Points to Lower DB `/api/digest/reddit-ingest` |
+| Ingest secret | Devvit app setting `ingestSecret` | Set with `devvit settings set ingestSecret`; stored encrypted by Devvit |
+| Daily cron | `DAILY_CRON` in `src/main.ts` | `0 9 * * *`, re-registered idempotently on install and upgrade |
+| Manual trigger | `Devvit.addMenuItem(...)` in `src/main.ts` | Moderator-only subreddit menu action |
+| Fetch domains | `permissions.http.domains` in `devvit.json` and `Devvit.configure(...)` in `src/main.ts` | `reddit.com`, `www.reddit.com`, `thelowerdb.com` |
 
 ## License
 

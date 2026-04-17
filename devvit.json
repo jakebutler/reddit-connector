@@ -5,14 +5,19 @@
     "http": {
       "enable": true,
       "domains": [
+        "reddit.com",
+        "www.reddit.com",
         "thelowerdb.com"
       ]
     },
     "reddit": true
   },
-  "server": {
-    "dir": "dist/server",
-    "entry": "index.js"
+  "blocks": {
+    "entry": "src/main.ts",
+    "triggers": [
+      "onAppInstall",
+      "onAppUpgrade"
+    ]
   },
   "settings": {
     "global": {
@@ -21,14 +26,6 @@
         "label": "Ingest Secret",
         "helpText": "Shared secret for POST /api/digest/reddit-ingest. Must match DIGEST_REDDIT_INGEST_SECRET in the Lower DB deployment.",
         "isSecret": true
-      }
-    }
-  },
-  "scheduler": {
-    "tasks": {
-      "glp1_weekly_ingest": {
-        "endpoint": "/internal/cron/glp1-weekly-ingest",
-        "cron": "0 9 * * 1"
       }
     }
   },
