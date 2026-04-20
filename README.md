@@ -72,6 +72,23 @@ The following domains are requested for this app:
 - `thelowerdb.com` - server-side POST target for the ingest pipeline
 - `reddit.com` and `www.reddit.com` - fallback read path for subreddit JSON when Devvit post construction fails on malformed Reddit objects
 
+Reddit also expects this **Fetch Domains** justification in the README for reviewers; see the [HTTP Fetch policy](https://developers.reddit.com/docs/capabilities/server/http-fetch-policy) documentation.
+
+## Privacy Policy and Terms of Use (required for HTTP Fetch)
+
+Any Devvit app that uses `fetch` must provide **Terms** and a **Privacy Policy**, and the **links must be saved in the Devvit app details form** (for example under **About this app**), not only in this repo. Reddit’s docs describe this under **Terms and conditions** on the [HTTP Fetch](https://developers.reddit.com/docs/capabilities/server/http-fetch) page; the [Devvit Rules](https://developers.reddit.com/docs/devvit_rules) also require links in the app when using HTTP Fetch or collecting personal information.
+
+**GLP-1 Monitor** — published legal pages (this repo’s [GitHub Pages](https://pages.github.com/) site, deployed from the repository root):
+
+- **Privacy Policy:** https://jakebutler.github.io/reddit-connector/privacy-policy.html
+- **Terms of Use:** https://jakebutler.github.io/reddit-connector/terms-of-use.html
+
+### Resubmitting domain exceptions after a rejection
+
+1. **Add both URLs** to your app in the Reddit developer portal (**Privacy Policy** + **Terms of Service** / **Terms of Use** fields). Links to Reddit’s own legal documents are not accepted as a substitute for your app’s documents.
+2. **Confirm the pages return 200** in a private/incognito window (GitHub Pages finished building).
+3. **Upload or playtest again** — domain allowlist entries from `devvit.json` are **submitted for review when you playtest or upload** the app. After updating app details, run `npm run deploy` (or `devvit upload`) and/or start a playtest so `thelowerdb.com`, `reddit.com`, and `www.reddit.com` go back into review.
+
 ## Manual testing
 
 Open the playtest subreddit URL and use the subreddit header `...` menu:
